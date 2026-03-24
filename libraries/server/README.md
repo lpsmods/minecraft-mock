@@ -1,5 +1,9 @@
 # @lpsmods/minecraft-server-mock
 
+![Version](https://shields.io/npm/v/@lpsmods/minecraft-server-mock)
+[![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-server-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-server-mock)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-server-mock)](https://github.com/lpsmods/minecraft-server-mock/issues)
+
 Emulates the [@minecraft/server](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/minecraft-server) package for testing.
 
 ## What is this?
@@ -22,6 +26,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
+    server: {
+      deps: {
+        inline: ["@minecraft/math"],
+      },
+    },
   },
   resolve: {
     alias: {
