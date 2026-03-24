@@ -1,0 +1,38 @@
+{
+  "name": "@lpsmods/minecraft-server-ui-mock",
+  "version": "0.0.1",
+  "description": "@minecraft/server-ui mocks for testing.",
+  "license": "MIT",
+  "author": "legopitstop",
+  "type": "module",
+  "main": "src/index.ts",
+  "homepage": "https://github.com/lpsmods/minecraft-mock",
+  "funding": "https://github.com/sponsors/legopitstop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lpsmods/minecraft-mock"
+  },
+  "bugs": {
+    "url": "https://github.com/lpsmods/minecraft-mock/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "npx vitest run",
+    "lint": "eslint ."
+  },
+  "peerDependencies": {
+    "@minecraft/server": "^2.6.0",
+    "@minecraft/server-ui": "^2.0.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "eslint": "^10.1.0",
+    "eslint-plugin-minecraft-linting": "^2.0.12",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "path": "^0.12.7",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
+  }
+}
