@@ -2,7 +2,7 @@
 
 ![Version](https://shields.io/npm/v/@lpsmods/minecraft-server-mock)
 [![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-server-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-server-mock)
-[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-server-mock)](https://github.com/lpsmods/minecraft-server-mock/issues)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-mock)](https://github.com/lpsmods/minecraft-mock/issues)
 
 Emulates the [@minecraft/server](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server/minecraft-server) package for testing.
 

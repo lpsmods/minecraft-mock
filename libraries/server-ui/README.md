@@ -2,7 +2,7 @@
 
 ![Version](https://shields.io/npm/v/@lpsmods/minecraft-server-ui-mock)
 [![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-server-ui-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-server-ui-mock)
-[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-server-ui-mock)](https://github.com/lpsmods/minecraft-server-ui-mock/issues)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-mock)](https://github.com/lpsmods/minecraft-mock/issues)
 
 Emulates the [@minecraft/server-ui](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-ui/minecraft-server-ui) package for testing.
 

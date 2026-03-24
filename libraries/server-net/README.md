@@ -2,7 +2,7 @@
 
 ![Version](https://shields.io/npm/v/@lpsmods/minecraft-server-net-mock)
 [![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-server-net-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-server-net-mock)
-[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-server-net-mock)](https://github.com/lpsmods/minecraft-server-net-mock/issues)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-mock)](https://github.com/lpsmods/minecraft-mock/issues)
 
 Emulates the [@minecraft/server-net](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-net/minecraft-server-net) package for testing.
 

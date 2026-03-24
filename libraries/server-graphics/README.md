@@ -2,7 +2,7 @@
 
 ![Version](https://shields.io/npm/v/@lpsmods/minecraft-server-graphics-mock)
 [![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-server-graphics-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-server-graphics-mock)
-[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-server-graphics-mock)](https://github.com/lpsmods/minecraft-server-graphics-mock/issues)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-mock)](https://github.com/lpsmods/minecraft-mock/issues)
 
 Emulates the [@minecraft/server-graphics](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/server-graphics/minecraft-server-graphics) package for testing.
 

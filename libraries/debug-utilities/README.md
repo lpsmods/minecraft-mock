@@ -2,7 +2,7 @@
 
 ![Version](https://shields.io/npm/v/@lpsmods/minecraft-debug-utilities-mock)
 [![Downloads](https://shields.io/npm/dm/@lpsmods/minecraft-debug-utilities-mock)](https://www.npmjs.com/package/@lpsmods/minecraft-debug-utilities-mock)
-[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-debug-utilities-mock)](https://github.com/lpsmods/minecraft-debug-utilities-mock/issues)
+[![Issues](https://img.shields.io/github/issues/lpsmods/minecraft-mock)](https://github.com/lpsmods/minecraft-mock/issues)
 
 Emulates the [@minecraft/debug-utilities](https://learn.microsoft.com/en-us/minecraft/creator/scriptapi/minecraft/debug-utilities/minecraft-debug-utilities) package for testing.
 
