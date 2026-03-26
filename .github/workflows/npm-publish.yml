@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -31,5 +31,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create release packages
+      - name: Parse release tag
+        id: tag
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          NAME="${TAG%%_v*}"
+          VERSION="${TAG##*_v}"
+
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Publish packages
         run: npx changeset publish
+
+      - name: Archive package
+        run: |
+          mkdir artifacts
+
+          PKG_FULL=${{ steps.tag.outputs.name }}
+          VERSION=${{ steps.tag.outputs.version}}
+
+          PKG_NAME="${PKG_FULL#@*/}"
+
+          tar -czf "artifacts/${PKG_NAME}_v${VERSION}.tar.gz" \
+            -C "libraries/$PKG_NAME" .
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.tar.gz
