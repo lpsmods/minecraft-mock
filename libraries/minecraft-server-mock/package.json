@@ -1,7 +1,7 @@
 {
-  "name": "@lpsmods/minecraft-debug-utilities-mock",
+  "name": "@lpsmods/minecraft-server-mock",
   "version": "0.0.1",
-  "description": "@minecraft/debug-utilities mocks for testing.",
+  "description": "@minecraft/server mocks for testing.",
   "license": "MIT",
   "author": "legopitstop",
   "type": "module",
@@ -15,6 +15,13 @@
   "bugs": {
     "url": "https://github.com/lpsmods/minecraft-mock/issues"
   },
+  "keywords": [
+    "minecraft",
+    "bedrock",
+    "tests",
+    "mock",
+    "vitest"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -23,7 +30,7 @@
     "lint": "eslint ."
   },
   "peerDependencies": {
-    "@minecraft/debug-utilities": "^1.0.0-beta.1.20.70-preview.20"
+    "@minecraft/server": "^2.6.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",
@@ -33,5 +40,8 @@
     "path": "^0.12.7",
     "typescript": "^5.9.3",
     "vitest": "^4.1.1"
+  },
+  "dependencies": {
+    "@minecraft/math": "^2.4.0"
   }
 }

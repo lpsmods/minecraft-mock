@@ -1,7 +1,7 @@
 {
-  "name": "@lpsmods/minecraft-server-ui-mock",
+  "name": "@lpsmods/minecraft-server-graphics-mock",
   "version": "0.0.1",
-  "description": "@minecraft/server-ui mocks for testing.",
+  "description": "@minecraft/server-graphics mocks for testing.",
   "license": "MIT",
   "author": "legopitstop",
   "type": "module",
@@ -15,6 +15,13 @@
   "bugs": {
     "url": "https://github.com/lpsmods/minecraft-mock/issues"
   },
+  "keywords": [
+    "minecraft",
+    "bedrock",
+    "tests",
+    "mock",
+    "vitest"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -24,7 +31,7 @@
   },
   "peerDependencies": {
     "@minecraft/server": "^2.6.0",
-    "@minecraft/server-ui": "^2.0.0"
+    "@minecraft/server-graphics": "^1.0.0-beta.1.21.130-preview.22"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",

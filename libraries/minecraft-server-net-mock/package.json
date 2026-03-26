@@ -15,6 +15,13 @@
   "bugs": {
     "url": "https://github.com/lpsmods/minecraft-mock/issues"
   },
+  "keywords": [
+    "minecraft",
+    "bedrock",
+    "tests",
+    "mock",
+    "vitest"
+  ],
   "publishConfig": {
     "access": "public"
   },
