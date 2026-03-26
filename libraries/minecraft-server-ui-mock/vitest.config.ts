@@ -13,7 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@minecraft/server-ui": path.resolve(__dirname, "src/index.ts"),
-      "@minecraft/server": path.resolve(__dirname, "../server/src/index.ts"),
+      "@minecraft/server": path.resolve(__dirname, "../minecraft-server-mock/src/index.ts"),
     },
   },
 });
