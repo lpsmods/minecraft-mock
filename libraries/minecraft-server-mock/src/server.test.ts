@@ -8,10 +8,28 @@ import {
   EntityTypes,
   ItemTypes,
 } from "@minecraft/server";
+import * as server from "@minecraft/server";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 describe("@minecraft/server", () => {
+  const peerTypes = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), "../../../node_modules/@minecraft/server/index.d.ts"),
+    "utf8",
+  );
+
+  it("covers every peer runtime export", () => {
+    const runtimeExports = [
+      ...peerTypes.matchAll(/export (?:class|enum) (\w+)/g),
+      ...peerTypes.matchAll(/export const (\w+)/g),
+    ].map((match) => match[1]);
+
+    expect(Object.keys(server).sort()).toEqual(expect.arrayContaining(runtimeExports.sort()));
+  });
+
   it("WorldAfterEvents", () => {
     world.afterEvents.blockExplode.subscribe(() => {});
     world.afterEvents.buttonPush.subscribe(() => {});
@@ -110,7 +128,7 @@ describe("@minecraft/server", () => {
     const item = ItemTypes.get("paper");
     expect(item?.id === "minecraft:paper").toBe(true);
   });
-  
+
   it("DimensionTypes", () => {
     const dim = DimensionTypes.get("overworld");
     expect(dim?.typeId === "minecraft:overworld").toBe(true);
