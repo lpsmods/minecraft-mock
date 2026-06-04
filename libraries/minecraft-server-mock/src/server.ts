@@ -61,6 +61,11 @@ export enum BlockComponentTypes {
   Sign = "minecraft:sign",
 }
 
+export enum AimAssistTargetMode {
+  Angle = "Angle",
+  Distance = "Distance",
+}
+
 export enum BlockPistonState {
   Expanded = "Expanded",
   Expanding = "Expanding",
@@ -1444,7 +1449,12 @@ const createMockClass = (name: string, Base: typeof Error | typeof Object = Obje
     },
   })[name];
 
-export const BlockComponent = createMockClass("BlockComponent"),
+export const AimAssistCategory = createMockClass("AimAssistCategory"),
+  AimAssistCategorySettings = createMockClass("AimAssistCategorySettings"),
+  AimAssistPreset = createMockClass("AimAssistPreset"),
+  AimAssistPresetSettings = createMockClass("AimAssistPresetSettings"),
+  AimAssistRegistry = createMockClass("AimAssistRegistry"),
+  BlockComponent = createMockClass("BlockComponent"),
   BlockComponentBlockBreakEvent = createMockClass("BlockComponentBlockBreakEvent"),
   BlockComponentEntityEvent = createMockClass("BlockComponentEntityEvent"),
   BlockComponentEntityFallOnEvent = createMockClass("BlockComponentEntityFallOnEvent"),
@@ -1678,6 +1688,7 @@ export const BlockComponent = createMockClass("BlockComponent"),
   PassengerOfEntityCondition = createMockClass("PassengerOfEntityCondition"),
   PistonActivateAfterEvent = createMockClass("PistonActivateAfterEvent"),
   PistonActivateAfterEventSignal = createMockClass("PistonActivateAfterEventSignal"),
+  PlayerAimAssist = createMockClass("PlayerAimAssist"),
   PlayerBreakBlockAfterEvent = createMockClass("PlayerBreakBlockAfterEvent"),
   PlayerBreakBlockAfterEventSignal = createMockClass("PlayerBreakBlockAfterEventSignal"),
   PlayerBreakBlockBeforeEvent = createMockClass("PlayerBreakBlockBeforeEvent"),
@@ -1798,6 +1809,7 @@ export const BlockComponent = createMockClass("BlockComponent"),
   InvalidBlockComponentError = createMockClass("InvalidBlockComponentError", Error),
   InvalidContainerError = createMockClass("InvalidContainerError", Error),
   InvalidContainerSlotError = createMockClass("InvalidContainerSlotError", Error),
+  InvalidEntityComponentError = createMockClass("InvalidEntityComponentError", Error),
   InvalidItemStackError = createMockClass("InvalidItemStackError", Error),
   InvalidIteratorError = createMockClass("InvalidIteratorError", Error),
   InvalidPotionDeliveryTypeError = createMockClass("InvalidPotionDeliveryTypeError", Error),
