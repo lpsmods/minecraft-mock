@@ -7,33 +7,95 @@ export enum HttpRequestMethod {
 }
 
 export class HttpClient {
-  cancelAll(reason: string) {}
+  private nextRequestId = 1;
+  private readonly pendingRequests = new Map<
+    number,
+    {
+      config: HttpRequest;
+      reject: (reason?: unknown) => void;
+      resolve: (response: HttpResponse) => void;
+    }
+  >();
+
+  cancelAll(reason: string) {
+    for (const [requestId, pending] of this.pendingRequests) {
+      pending.reject(reason);
+      this.pendingRequests.delete(requestId);
+    }
+  }
 
   get(uri: string) {
     return this.request(new HttpRequest(uri).setMethod(HttpRequestMethod.GET));
   }
 
   request(config: HttpRequest) {
-    return new Promise((resolve) => {
-      const init = {};
-      fetch(config.uri, init).then((res) => {
-        res.text().then((body) => {
-          const headers: HttpHeader[] = [];
-          for (const [k, v] of res.headers.entries()) {
-            headers.push(new HttpHeader(k, v));
+    return new Promise<HttpResponse>((resolve, reject) => {
+      const requestId = this.nextRequestId++;
+      this.pendingRequests.set(requestId, { config, reject, resolve });
+
+      const controller = config.timeout > 0 ? new AbortController() : undefined;
+      const timeout =
+        config.timeout > 0
+          ? setTimeout(() => {
+              this.pendingRequests.delete(requestId);
+              controller?.abort();
+              reject(`Request timed out after ${config.timeout} seconds.`);
+            }, config.timeout * 1000)
+          : undefined;
+
+      fetch(config.uri, {
+        body: config.body || undefined,
+        headers: Object.fromEntries(config.headers.map((header) => [header.key, String(header.value)])),
+        method: config.method,
+        signal: controller?.signal,
+      })
+        .then((res) =>
+          res.text().then((body) => {
+            const headers: HttpHeader[] = [];
+            for (const [k, v] of res.headers.entries()) {
+              headers.push(new HttpHeader(k, v));
+            }
+            return new HttpResponse(body, headers, config, res.status);
+          }),
+        )
+        .then(resolve, reject)
+        .finally(() => {
+          if (timeout !== undefined) {
+            clearTimeout(timeout);
           }
-          resolve(new HttpResponse(body, headers, config, res.status));
+          this.pendingRequests.delete(requestId);
         });
-      });
     });
+  }
+
+  testOnly_fulfillRequest(requestId: number, headers: HttpHeader[], body: string, status: number) {
+    const pending = this.pendingRequests.get(requestId);
+    if (pending === undefined) {
+      return;
+    }
+    this.pendingRequests.delete(requestId);
+    pending.resolve(new HttpResponse(body, headers, pending.config, status));
+  }
+
+  testOnly_getRequests() {
+    return Array.from(this.pendingRequests.keys());
+  }
+
+  testOnly_rejectRequest(requestId: number, reason: string) {
+    const pending = this.pendingRequests.get(requestId);
+    if (pending === undefined) {
+      return;
+    }
+    this.pendingRequests.delete(requestId);
+    pending.reject(reason);
   }
 }
 
 export class HttpHeader {
   key: string;
-  value: string;
+  value: unknown;
 
-  constructor(key: string, value: string) {
+  constructor(key: string, value: unknown) {
     this.key = key;
     this.value = value;
   }
@@ -46,7 +108,7 @@ export class HttpRequest {
   timeout = 0;
   uri: string;
 
-  addHeader(key: string, value: string) {
+  addHeader(key: string, value: unknown) {
     this.headers.push(new HttpHeader(key, value));
     return this;
   }
@@ -81,12 +143,7 @@ export class HttpResponse {
   readonly headers: HttpHeader[];
   readonly request: HttpRequest;
   readonly status: number;
-  constructor(
-    body: string,
-    headers: HttpHeader[],
-    request: HttpRequest,
-    status: number,
-  ) {
+  constructor(body: string, headers: HttpHeader[], request: HttpRequest, status: number) {
     this.body = body;
     this.headers = headers;
     this.request = request;
