@@ -1,157 +1,151 @@
-import { describe, it } from "vitest";
-import {
+import { world } from "@minecraft/server";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as serverUi from "@minecraft/server-ui";
+const {
   ActionFormData,
   ActionFormResponse,
-  MessageFormResponse,
+  FormCancelationReason,
+  FormRejectError,
+  FormRejectReason,
+  FormResponse,
   MessageFormData,
+  MessageFormResponse,
   ModalFormData,
-} from "@minecraft/server-ui";
-import { world } from "@minecraft/server";
+  ModalFormResponse,
+  UIManager,
+  uiManager,
+} = serverUi;
+import { describe, expect, it } from "vitest";
 
 describe("@minecraft/server-ui", () => {
-  it("showActionForm", () => {
-    const playerList = world.getPlayers();
-    if (playerList.length >= 1) {
-      const form = new ActionFormData()
-        .title("Test Title")
-        .body("Body text here!")
-        .button("btn 1")
-        .button("btn 2")
-        .button("btn 3")
-        .button("btn 4")
-        .button("btn 5");
+  const player = world.getPlayers()[0];
+  const peerTypes = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), "../../../node_modules/@minecraft/server-ui/index.d.ts"),
+    "utf8",
+  );
 
-      form.show(playerList[0]).then((result: ActionFormResponse) => {
-        if (result.canceled) {
-          console.log(
-            "Player exited out of the dialog. Note that if the chat window is up, dialogs are automatically canceled.",
-          );
-          return -1;
-        } else {
-          console.log("Your result was: " + result.selection);
-        }
-      });
+  it("covers every peer runtime export and class method", () => {
+    const runtimeExports = [
+      ...peerTypes.matchAll(/export (?:class|enum) (\w+)/g),
+      ...peerTypes.matchAll(/export const (\w+)/g),
+    ].map((match) => match[1]);
+
+    expect(Object.keys(serverUi).sort()).toEqual(expect.arrayContaining(runtimeExports.sort()));
+
+    for (const [, className, body] of peerTypes.matchAll(/export class (\w+) \{([\s\S]*?)\n\}/g)) {
+      const methods = [...body.matchAll(/^\s{4}(\w+)\(/gm)].map((match) => match[1]);
+
+      for (const method of methods) {
+        expect(serverUi[className as keyof typeof serverUi].prototype).toHaveProperty(method);
+      }
     }
   });
 
-  it("showFavoriteMonth", () => {
-    const players = world.getPlayers();
-
-    if (players.length >= 1) {
-      const form = new ActionFormData()
-        .title("Months")
-        .body("Choose your favorite month!")
-        .button("January")
-        .button("February")
-        .button("March")
-        .button("April")
-        .button("May");
-
-      form.show(players[0]).then((response: ActionFormResponse) => {
-        if (response.selection === 3) {
-          console.log("I like April too!");
-          return -1;
-        }
-      });
-    }
+  it("exports peer enum values", () => {
+    expect(FormCancelationReason.UserBusy).toBe("UserBusy");
+    expect(FormCancelationReason.UserClosed).toBe("UserClosed");
+    expect(FormRejectReason.MalformedResponse).toBe("MalformedResponse");
+    expect(FormRejectReason.PlayerQuit).toBe("PlayerQuit");
+    expect(FormRejectReason.ServerShutdown).toBe("ServerShutdown");
   });
 
-  it("showBasicMessageForm", () => {
-    const players = world.getPlayers();
-
-    const messageForm = new MessageFormData()
-      .title("Message Form Example")
-      .body("This shows a simple example using §o§7MessageFormData§r.")
-      .button1("Button 1")
-      .button2("Button 2");
-
-    messageForm
-      .show(players[0])
-      .then((formData: MessageFormResponse) => {
-        // player canceled the form, or another dialog was up and open.
-        if (formData.canceled || formData.selection === undefined) {
-          return;
-        }
-
-        console.log(
-          `You selected ${formData.selection === 0 ? "Button 1" : "Button 2"}`,
-        );
-      })
-      .catch((error: Error) => {
-        console.log("Failed to show form: " + error);
-        return -1;
-      });
-  });
-
-  it("showTranslatedMessageForm", () => {
-    const players = world.getPlayers();
-
-    const messageForm = new MessageFormData()
-      .title({ translate: "permissions.removeplayer" })
-      .body({
-        translate: "accessibility.list.or.two",
-        with: ["Player 1", "Player 2"],
-      })
-      .button1("Player 1")
-      .button2("Player 2");
-
-    messageForm
-      .show(players[0])
-      .then((formData: MessageFormResponse) => {
-        // player canceled the form, or another dialog was up and open.
-        if (formData.canceled || formData.selection === undefined) {
-          return;
-        }
-
-        console.log(
-          `You selected ${formData.selection === 0 ? "Player 1" : "Player 2"}`,
-        );
-      })
-      .catch((error: Error) => {
-        console.log("Failed to show form: " + error);
-        return -1;
-      });
-  });
-
-  it("showBasicModalForm", () => {
-    const players = world.getPlayers();
-
-    const modalForm = new ModalFormData().title(
-      "Example Modal Controls for §o§7ModalFormData§r",
+  it("models base and rejected form responses", () => {
+    expect(new FormResponse().canceled).toBe(false);
+    expect(new FormResponse(true, FormCancelationReason.UserClosed).cancelationReason).toBe(
+      FormCancelationReason.UserClosed,
     );
+    expect(new FormRejectError(FormRejectReason.PlayerQuit).reason).toBe(FormRejectReason.PlayerQuit);
+  });
 
-    modalForm.toggle("Toggle w/o default");
-    modalForm.toggle("Toggle w/ default", { defaultValue: true });
+  it("builds and shows action forms", async () => {
+    const form = new ActionFormData()
+      .title("Actions")
+      .body("Pick one")
+      .header("Header")
+      .label("Label")
+      .divider()
+      .button("First", "textures/items/apple")
+      .button({ translate: "gui.cancel" });
 
-    modalForm.slider("Slider w/o default", 0, 50, { defaultValue: 5 });
-    modalForm.slider("Slider w/ default", 0, 50, { defaultValue: 5 });
+    const response = await form.show(player);
 
-    modalForm.dropdown("Dropdown w/o default", [
-      "option 1",
-      "option 2",
-      "option 3",
+    expect(response).toBeInstanceOf(ActionFormResponse);
+    expect(response.canceled).toBe(false);
+    expect(response.selection).toBe(0);
+    expect(form.titleText).toBe("Actions");
+    expect(form.bodyText).toBe("Pick one");
+    expect(form.buttons).toEqual([
+      { text: "First", iconPath: "textures/items/apple" },
+      { text: { translate: "gui.cancel" }, iconPath: undefined },
     ]);
-    modalForm.dropdown(
-      "Dropdown w/ default",
-      ["option 1", "option 2", "option 3"],
-      2,
-    );
+    expect(form.elements.map((element) => element.type)).toEqual(["header", "label", "divider", "button", "button"]);
+  });
 
-    modalForm.textField("Input w/o default", "type text here");
-    modalForm.textField("Input w/ default", "type text here", {
-      defaultValue: "this is default",
-    });
+  it("builds and shows message forms", async () => {
+    const form = new MessageFormData().title("Confirm").body("Continue?").button1("Yes").button2("No");
+    const response = await form.show(player);
 
-    modalForm
-      .show(players[0])
-      .then((formData) => {
-        players[0].sendMessage(
-          `Modal form results: ${JSON.stringify(formData.formValues, undefined, 2)}`,
-        );
-      })
-      .catch((error: Error) => {
-        console.log("Failed to show form: " + error);
-        return -1;
-      });
+    expect(response).toBeInstanceOf(MessageFormResponse);
+    expect(response.canceled).toBe(false);
+    expect(response.selection).toBe(0);
+    expect(form.titleText).toBe("Confirm");
+    expect(form.bodyText).toBe("Continue?");
+    expect(form.button1Text).toBe("Yes");
+    expect(form.button2Text).toBe("No");
+  });
+
+  it("builds and shows modal forms", async () => {
+    const form = new ModalFormData()
+      .title("Settings")
+      .header("Basics")
+      .label("Choose values")
+      .divider()
+      .toggle("Enabled", { defaultValue: true, tooltip: "Toggle feature" })
+      .slider("Volume", 0, 10, { defaultValue: 5, valueStep: 1, tooltip: "Set volume" })
+      .dropdown("Mode", ["A", "B", "C"], { defaultValueIndex: 2, tooltip: "Pick mode" })
+      .textField("Name", "Type here", { defaultValue: "Steve", tooltip: "Display name" })
+      .submitButton("Save");
+
+    const response = await form.show(player);
+
+    expect(response).toBeInstanceOf(ModalFormResponse);
+    expect(response.canceled).toBe(false);
+    expect(response.formValues).toEqual([true, 5, 2, "Steve"]);
+    expect(form.titleText).toBe("Settings");
+    expect(form.submitButtonText).toBe("Save");
+    expect(form.elements.map((element) => element.type)).toEqual([
+      "header",
+      "label",
+      "divider",
+      "toggle",
+      "slider",
+      "dropdown",
+      "textField",
+      "submitButton",
+    ]);
+  });
+
+  it("supports legacy primitive modal defaults used by package examples", async () => {
+    const response = await new ModalFormData()
+      .toggle("Toggle", true)
+      .slider("Slider", 0, 10, 3)
+      .dropdown("Dropdown", ["A", "B"], 1)
+      .textField("Text", "Placeholder", "Alex")
+      .show(player);
+
+    expect(response.formValues).toEqual([true, 3, 1, "Alex"]);
+  });
+
+  it("closes forms through UIManager and uiManager singleton", () => {
+    const manager = new UIManager();
+
+    manager.closeAllForms(player);
+    uiManager.closeAllForms(player);
+
+    expect(manager.closedForms).toContain(player);
+    expect(uiManager).toBeInstanceOf(UIManager);
+    expect(uiManager.closedForms).toContain(player);
   });
 });
