@@ -3,6 +3,45 @@ import { Vector3, RawMessage } from "@minecraft/server";
 import { vi } from "vitest";
 
 const eventSignal = { subscribe: vi.fn((cb: () => void) => 1) };
+type DynamicPropertyValue = boolean | number | string | Vector3;
+
+class DynamicPropertyStore {
+  private readonly values = new Map<string, DynamicPropertyValue>();
+
+  clear() {
+    this.values.clear();
+  }
+
+  get(identifier: string) {
+    return this.values.get(identifier);
+  }
+
+  getIds() {
+    return Array.from(this.values.keys());
+  }
+
+  getTotalByteCount() {
+    let total = 0;
+    for (const [identifier, value] of this.values) {
+      total += identifier.length + JSON.stringify(value).length;
+    }
+    return total;
+  }
+
+  set(identifier: string, value?: DynamicPropertyValue) {
+    if (value === undefined) {
+      this.values.delete(identifier);
+      return;
+    }
+    this.values.set(identifier, value);
+  }
+
+  setMany(values: Record<string, DynamicPropertyValue | undefined>) {
+    for (const [identifier, value] of Object.entries(values)) {
+      this.set(identifier, value);
+    }
+  }
+}
 
 // Internal
 function idHelper(id: string): string {
@@ -918,6 +957,11 @@ export class TickingAreaManager {
   removeTickingArea(...args: string[]) {}
 }
 export class World {
+  private absoluteTime = 0;
+  private defaultSpawnLocation: Vector3 = VECTOR3_ZERO;
+  private difficulty = Difficulty.Normal;
+  private readonly dynamicProperties = new DynamicPropertyStore();
+  private timeOfDay = TimeOfDay.Day;
   readonly afterEvents = new WorldAfterEvents();
   readonly beforeEvents = new WorldBeforeEvents();
   readonly gameRules = new GameRules();
@@ -944,7 +988,7 @@ export class World {
   }
 
   getTimeOfDay() {
-    return 1;
+    return this.timeOfDay;
   }
 
   getMoonPhase() {
@@ -954,6 +998,55 @@ export class World {
   getEntity() {
     return new Entity();
   }
+
+  clearDynamicProperties() {
+    this.dynamicProperties.clear();
+  }
+  getDynamicProperty(identifier: string) {
+    return this.dynamicProperties.get(identifier);
+  }
+  getDynamicPropertyIds() {
+    return this.dynamicProperties.getIds();
+  }
+  getDynamicPropertyTotalByteCount() {
+    return this.dynamicProperties.getTotalByteCount();
+  }
+  setDynamicProperties(values: Record<string, DynamicPropertyValue | undefined>) {
+    this.dynamicProperties.setMany(values);
+  }
+  setDynamicProperty(identifier: string, value?: DynamicPropertyValue) {
+    this.dynamicProperties.set(identifier, value);
+  }
+
+  getAbsoluteTime() {
+    return this.absoluteTime;
+  }
+  getAimAssist() {}
+  getAllPlayers() {
+    return this.getPlayers();
+  }
+  getDefaultSpawnLocation() {
+    return this.defaultSpawnLocation;
+  }
+  getDifficulty() {
+    return this.difficulty;
+  }
+  getLootTableManager() {}
+  playMusic() {}
+  queueMusic() {}
+  setAbsoluteTime(absoluteTime: number) {
+    this.absoluteTime = absoluteTime;
+  }
+  setDefaultSpawnLocation(spawnLocation: Vector3) {
+    this.defaultSpawnLocation = spawnLocation;
+  }
+  setDifficulty(difficulty: Difficulty) {
+    this.difficulty = difficulty;
+  }
+  setTimeOfDay(timeOfDay: number | TimeOfDay) {
+    this.timeOfDay = timeOfDay;
+  }
+  stopMusic() {}
 }
 
 export const world = new World();
@@ -984,6 +1077,8 @@ export const system = {
 };
 
 export class Entity {
+  private readonly dynamicProperties = new DynamicPropertyStore();
+  private readonly tags = new Set<string>();
   readonly dimension = new Dimension();
   readonly id = "12345";
   readonly isClimbing = false;
@@ -1000,20 +1095,39 @@ export class Entity {
   readonly typeId = "minecraft:creeper";
   nameTag = "";
 
+  clearDynamicProperties() {
+    this.dynamicProperties.clear();
+  }
+  getDynamicProperty(identifier: string) {
+    return this.dynamicProperties.get(identifier);
+  }
+  getDynamicPropertyIds() {
+    return this.dynamicProperties.getIds();
+  }
+  getDynamicPropertyTotalByteCount() {
+    return this.dynamicProperties.getTotalByteCount();
+  }
+  setDynamicProperties(values: Record<string, DynamicPropertyValue | undefined>) {
+    this.dynamicProperties.setMany(values);
+  }
+  setDynamicProperty(identifier: string, value?: DynamicPropertyValue) {
+    this.dynamicProperties.set(identifier, value);
+  }
+
   addEffect = vi.fn();
-  addTag = vi.fn();
+  addTag = vi.fn((tag: string) => {
+    const hadTag = this.tags.has(tag);
+    this.tags.add(tag);
+    return !hadTag;
+  });
   applyDamage = vi.fn();
   applyImpulse = vi.fn();
   applyKnockback = vi.fn();
-  clearDynamicProperties = vi.fn();
   clearVelocity = vi.fn();
   extinguishFire = vi.fn();
   getBlockFromViewDirection = vi.fn();
   getComponent = vi.fn((componentId) => {});
   getComponents = vi.fn();
-  getDynamicProperty = vi.fn();
-  getDynamicPropertyIds = vi.fn();
-  getDynamicPropertyTotalByteCount = vi.fn();
   getEffect = vi.fn();
   getEffects = vi.fn();
   getEntitiesFromViewDirection = vi.fn();
@@ -1022,22 +1136,20 @@ export class Entity {
   getRotation = vi.fn(() => {
     return { x: 0, y: 0 };
   });
-  getTags = vi.fn();
+  getTags = vi.fn(() => Array.from(this.tags));
   getVelocity = vi.fn();
   getViewDirection = vi.fn();
   hasComponent = vi.fn();
-  hasTag = vi.fn();
+  hasTag = vi.fn((tag: string) => this.tags.has(tag));
   kill = vi.fn();
   lookAt = vi.fn();
   matches = vi.fn();
   playAnimation = vi.fn();
   remove = vi.fn();
   removeEffect = vi.fn();
-  removeTag = vi.fn();
+  removeTag = vi.fn((tag: string) => this.tags.delete(tag));
   resetProperty = vi.fn();
   runCommand = vi.fn();
-  setDynamicProperties = vi.fn();
-  setDynamicProperty = vi.fn();
   setOnFire = vi.fn();
   setProperty = vi.fn();
   setRotation = vi.fn();
@@ -1070,6 +1182,7 @@ export class BlockVolume extends BlockVolumeBase {
 
 export class Player extends Entity {
   readonly name = "Steve";
+  sendMessage = vi.fn();
 }
 
 export class Dimension {
@@ -1100,7 +1213,9 @@ export class Dimension {
   getEntitiesAtBlockLocation() {}
   getEntitiesFromRay() {}
   getLightLevel() {}
-  getPlayers() {}
+  getPlayers() {
+    return [new Player()];
+  }
   getSkyLightLevel() {}
   getTopmostBlock() {}
   isChunkLoaded() {}
@@ -1111,32 +1226,64 @@ export class Dimension {
   setBlockPermutation() {}
   setBlockType() {}
   setWeather() {}
-  spawnEntity() {}
-  spawnItem() {}
+  spawnEntity() {
+    return new Entity();
+  }
+  spawnItem() {
+    return new Entity();
+  }
   spawnParticle() {}
 }
 
 export class ItemStack {
-  constructor(public typeId: string) {}
+  constructor(
+    public typeId: string,
+    amount = 1,
+  ) {
+    this.amount = amount;
+    this.type = new ItemType(typeId);
+  }
+  private readonly dynamicProperties = new DynamicPropertyStore();
   readonly isStackable = false;
   readonly maxAmount = 64;
   readonly weight = 1;
-  amount = 0;
+  amount = 1;
   keepOnDeath = false;
   localizationKey = "item.paper";
   lockMode = ItemLockMode.none;
   nameTag = "Custom Name";
   type = new ItemType("minecraft:paper");
 
-  clearDynamicProperties = vi.fn();
-  clone = vi.fn();
+  clearDynamicProperties() {
+    this.dynamicProperties.clear();
+  }
+  getDynamicProperty(identifier: string) {
+    return this.dynamicProperties.get(identifier);
+  }
+  getDynamicPropertyIds() {
+    return this.dynamicProperties.getIds();
+  }
+  getDynamicPropertyTotalByteCount() {
+    return this.dynamicProperties.getTotalByteCount();
+  }
+  setDynamicProperties(values: Record<string, DynamicPropertyValue | undefined>) {
+    this.dynamicProperties.setMany(values);
+  }
+  setDynamicProperty(identifier: string, value?: DynamicPropertyValue) {
+    this.dynamicProperties.set(identifier, value);
+  }
+
+  clone = vi.fn(() => {
+    const stack = new ItemStack(this.typeId, this.amount);
+    stack.keepOnDeath = this.keepOnDeath;
+    stack.lockMode = this.lockMode;
+    stack.nameTag = this.nameTag;
+    return stack;
+  });
   getCanDestroy = vi.fn();
   getCanPlaceOn = vi.fn();
   getComponent = vi.fn();
   getComponents = vi.fn();
-  getDynamicProperty = vi.fn();
-  getDynamicPropertyIds = vi.fn();
-  getDynamicPropertyTotalByteCount = vi.fn();
   getLore = vi.fn();
   getRawLore = vi.fn();
   getTags = vi.fn(() => []);
@@ -1146,8 +1293,6 @@ export class ItemStack {
   matches = vi.fn((name) => true);
   setCanDestroy = vi.fn();
   setCanPlaceOn = vi.fn();
-  setDynamicProperties = vi.fn();
-  setDynamicProperty = vi.fn();
   setLore = vi.fn();
 }
 
@@ -1288,4 +1433,390 @@ export const DimensionTypes = {
   get: vi.fn((id: string) => DimensionTypes.getAll().find((dimension) => dimension.typeId === idHelper(id))),
 };
 
-export class InvalidEntityError {}
+export class InvalidEntityError extends Error {}
+
+const createMockClass = (name: string, Base: typeof Error | typeof Object = Object) =>
+  ({
+    [name]: class extends Base {
+      constructor(...args: unknown[]) {
+        super(...(args as []));
+      }
+    },
+  })[name];
+
+export const BlockComponent = createMockClass("BlockComponent"),
+  BlockComponentBlockBreakEvent = createMockClass("BlockComponentBlockBreakEvent"),
+  BlockComponentEntityEvent = createMockClass("BlockComponentEntityEvent"),
+  BlockComponentEntityFallOnEvent = createMockClass("BlockComponentEntityFallOnEvent"),
+  BlockComponentOnPlaceEvent = createMockClass("BlockComponentOnPlaceEvent"),
+  BlockComponentPlayerBreakEvent = createMockClass("BlockComponentPlayerBreakEvent"),
+  BlockComponentPlayerInteractEvent = createMockClass("BlockComponentPlayerInteractEvent"),
+  BlockComponentPlayerPlaceBeforeEvent = createMockClass("BlockComponentPlayerPlaceBeforeEvent"),
+  BlockComponentRandomTickEvent = createMockClass("BlockComponentRandomTickEvent"),
+  BlockComponentRedstoneUpdateEvent = createMockClass("BlockComponentRedstoneUpdateEvent"),
+  BlockComponentRegistry = createMockClass("BlockComponentRegistry"),
+  BlockComponentStepOffEvent = createMockClass("BlockComponentStepOffEvent"),
+  BlockComponentStepOnEvent = createMockClass("BlockComponentStepOnEvent"),
+  BlockComponentTickEvent = createMockClass("BlockComponentTickEvent"),
+  BlockCustomComponentInstance = createMockClass("BlockCustomComponentInstance"),
+  BlockEvent = createMockClass("BlockEvent"),
+  BlockExplodeAfterEvent = createMockClass("BlockExplodeAfterEvent"),
+  BlockExplodeAfterEventSignal = createMockClass("BlockExplodeAfterEventSignal"),
+  BlockFluidContainerComponent = createMockClass("BlockFluidContainerComponent"),
+  BlockInventoryComponent = createMockClass("BlockInventoryComponent"),
+  BlockLocationIterator = createMockClass("BlockLocationIterator"),
+  BlockMapColorComponent = createMockClass("BlockMapColorComponent"),
+  BlockMovableComponent = createMockClass("BlockMovableComponent"),
+  BlockPistonComponent = createMockClass("BlockPistonComponent"),
+  BlockPrecipitationInteractionsComponent = createMockClass("BlockPrecipitationInteractionsComponent"),
+  BlockRecordPlayerComponent = createMockClass("BlockRecordPlayerComponent"),
+  BlockRedstoneProducerComponent = createMockClass("BlockRedstoneProducerComponent"),
+  BlockSignComponent = createMockClass("BlockSignComponent"),
+  BlockStates = createMockClass("BlockStates"),
+  BlockStateType = createMockClass("BlockStateType"),
+  ButtonPushAfterEvent = createMockClass("ButtonPushAfterEvent"),
+  ButtonPushAfterEventSignal = createMockClass("ButtonPushAfterEventSignal"),
+  Camera = createMockClass("Camera"),
+  CatmullRomSpline = createMockClass("CatmullRomSpline"),
+  ClientSystemInfo = createMockClass("ClientSystemInfo"),
+  CommandResult = createMockClass("CommandResult"),
+  Component = createMockClass("Component"),
+  Container = createMockClass("Container"),
+  ContainerSlot = createMockClass("ContainerSlot"),
+  CustomCommandOrigin = createMockClass("CustomCommandOrigin"),
+  CustomCommandRegistry = createMockClass("CustomCommandRegistry"),
+  CustomComponentParameters = createMockClass("CustomComponentParameters"),
+  DamagedByEntityCondition = createMockClass("DamagedByEntityCondition"),
+  DataDrivenEntityTriggerAfterEvent = createMockClass("DataDrivenEntityTriggerAfterEvent"),
+  DataDrivenEntityTriggerAfterEventSignal = createMockClass("DataDrivenEntityTriggerAfterEventSignal"),
+  Effect = createMockClass("Effect"),
+  EffectAddAfterEvent = createMockClass("EffectAddAfterEvent"),
+  EffectAddAfterEventSignal = createMockClass("EffectAddAfterEventSignal"),
+  EffectAddBeforeEvent = createMockClass("EffectAddBeforeEvent"),
+  EffectAddBeforeEventSignal = createMockClass("EffectAddBeforeEventSignal"),
+  EmptyLootItem = createMockClass("EmptyLootItem"),
+  EnchantInfo = createMockClass("EnchantInfo"),
+  EnchantRandomEquipmentFunction = createMockClass("EnchantRandomEquipmentFunction"),
+  EnchantRandomlyFunction = createMockClass("EnchantRandomlyFunction"),
+  EnchantWithLevelsFunction = createMockClass("EnchantWithLevelsFunction"),
+  EntityAddRiderComponent = createMockClass("EntityAddRiderComponent"),
+  EntityAgeableComponent = createMockClass("EntityAgeableComponent"),
+  EntityAttributeComponent = createMockClass("EntityAttributeComponent"),
+  EntityBaseMovementComponent = createMockClass("EntityBaseMovementComponent"),
+  EntityBreathableComponent = createMockClass("EntityBreathableComponent"),
+  EntityCanClimbComponent = createMockClass("EntityCanClimbComponent"),
+  EntityCanFlyComponent = createMockClass("EntityCanFlyComponent"),
+  EntityCanPowerJumpComponent = createMockClass("EntityCanPowerJumpComponent"),
+  EntityColor2Component = createMockClass("EntityColor2Component"),
+  EntityColorComponent = createMockClass("EntityColorComponent"),
+  EntityComponent = createMockClass("EntityComponent"),
+  EntityDefinitionFeedItem = createMockClass("EntityDefinitionFeedItem"),
+  EntityDieAfterEvent = createMockClass("EntityDieAfterEvent"),
+  EntityDieAfterEventSignal = createMockClass("EntityDieAfterEventSignal"),
+  EntityEquippableComponent = createMockClass("EntityEquippableComponent"),
+  EntityExhaustionComponent = createMockClass("EntityExhaustionComponent"),
+  EntityFireImmuneComponent = createMockClass("EntityFireImmuneComponent"),
+  EntityFloatsInLiquidComponent = createMockClass("EntityFloatsInLiquidComponent"),
+  EntityFlyingSpeedComponent = createMockClass("EntityFlyingSpeedComponent"),
+  EntityFrictionModifierComponent = createMockClass("EntityFrictionModifierComponent"),
+  EntityHasMarkVariantCondition = createMockClass("EntityHasMarkVariantCondition"),
+  EntityHasVariantCondition = createMockClass("EntityHasVariantCondition"),
+  EntityHealableComponent = createMockClass("EntityHealableComponent"),
+  EntityHealAfterEvent = createMockClass("EntityHealAfterEvent"),
+  EntityHealAfterEventSignal = createMockClass("EntityHealAfterEventSignal"),
+  EntityHealBeforeEvent = createMockClass("EntityHealBeforeEvent"),
+  EntityHealBeforeEventSignal = createMockClass("EntityHealBeforeEventSignal"),
+  EntityHealSource = createMockClass("EntityHealSource"),
+  EntityHealthChangedAfterEvent = createMockClass("EntityHealthChangedAfterEvent"),
+  EntityHealthChangedAfterEventSignal = createMockClass("EntityHealthChangedAfterEventSignal"),
+  EntityHealthComponent = createMockClass("EntityHealthComponent"),
+  EntityHitBlockAfterEvent = createMockClass("EntityHitBlockAfterEvent"),
+  EntityHitBlockAfterEventSignal = createMockClass("EntityHitBlockAfterEventSignal"),
+  EntityHitEntityAfterEvent = createMockClass("EntityHitEntityAfterEvent"),
+  EntityHitEntityAfterEventSignal = createMockClass("EntityHitEntityAfterEventSignal"),
+  EntityHungerComponent = createMockClass("EntityHungerComponent"),
+  EntityHurtAfterEvent = createMockClass("EntityHurtAfterEvent"),
+  EntityHurtAfterEventSignal = createMockClass("EntityHurtAfterEventSignal"),
+  EntityHurtBeforeEvent = createMockClass("EntityHurtBeforeEvent"),
+  EntityHurtBeforeEventSignal = createMockClass("EntityHurtBeforeEventSignal"),
+  EntityInventoryComponent = createMockClass("EntityInventoryComponent"),
+  EntityIsBabyComponent = createMockClass("EntityIsBabyComponent"),
+  EntityIsChargedComponent = createMockClass("EntityIsChargedComponent"),
+  EntityIsChestedComponent = createMockClass("EntityIsChestedComponent"),
+  EntityIsDyeableComponent = createMockClass("EntityIsDyeableComponent"),
+  EntityIsHiddenWhenInvisibleComponent = createMockClass("EntityIsHiddenWhenInvisibleComponent"),
+  EntityIsIgnitedComponent = createMockClass("EntityIsIgnitedComponent"),
+  EntityIsIllagerCaptainComponent = createMockClass("EntityIsIllagerCaptainComponent"),
+  EntityIsSaddledComponent = createMockClass("EntityIsSaddledComponent"),
+  EntityIsShakingComponent = createMockClass("EntityIsShakingComponent"),
+  EntityIsShearedComponent = createMockClass("EntityIsShearedComponent"),
+  EntityIsStackableComponent = createMockClass("EntityIsStackableComponent"),
+  EntityIsStunnedComponent = createMockClass("EntityIsStunnedComponent"),
+  EntityIsTamedComponent = createMockClass("EntityIsTamedComponent"),
+  EntityItemComponent = createMockClass("EntityItemComponent"),
+  EntityItemDropAfterEvent = createMockClass("EntityItemDropAfterEvent"),
+  EntityItemDropAfterEventSignal = createMockClass("EntityItemDropAfterEventSignal"),
+  EntityItemPickupAfterEvent = createMockClass("EntityItemPickupAfterEvent"),
+  EntityItemPickupAfterEventSignal = createMockClass("EntityItemPickupAfterEventSignal"),
+  EntityItemPickupBeforeEvent = createMockClass("EntityItemPickupBeforeEvent"),
+  EntityItemPickupBeforeEventSignal = createMockClass("EntityItemPickupBeforeEventSignal"),
+  EntityKilledCondition = createMockClass("EntityKilledCondition"),
+  EntityLavaMovementComponent = createMockClass("EntityLavaMovementComponent"),
+  EntityLeashableComponent = createMockClass("EntityLeashableComponent"),
+  EntityLoadAfterEvent = createMockClass("EntityLoadAfterEvent"),
+  EntityLoadAfterEventSignal = createMockClass("EntityLoadAfterEventSignal"),
+  EntityMarkVariantComponent = createMockClass("EntityMarkVariantComponent"),
+  EntityMovementAmphibiousComponent = createMockClass("EntityMovementAmphibiousComponent"),
+  EntityMovementBasicComponent = createMockClass("EntityMovementBasicComponent"),
+  EntityMovementComponent = createMockClass("EntityMovementComponent"),
+  EntityMovementFlyComponent = createMockClass("EntityMovementFlyComponent"),
+  EntityMovementGenericComponent = createMockClass("EntityMovementGenericComponent"),
+  EntityMovementGlideComponent = createMockClass("EntityMovementGlideComponent"),
+  EntityMovementHoverComponent = createMockClass("EntityMovementHoverComponent"),
+  EntityMovementJumpComponent = createMockClass("EntityMovementJumpComponent"),
+  EntityMovementSkipComponent = createMockClass("EntityMovementSkipComponent"),
+  EntityMovementSwayComponent = createMockClass("EntityMovementSwayComponent"),
+  EntityNavigationClimbComponent = createMockClass("EntityNavigationClimbComponent"),
+  EntityNavigationComponent = createMockClass("EntityNavigationComponent"),
+  EntityNavigationFloatComponent = createMockClass("EntityNavigationFloatComponent"),
+  EntityNavigationFlyComponent = createMockClass("EntityNavigationFlyComponent"),
+  EntityNavigationGenericComponent = createMockClass("EntityNavigationGenericComponent"),
+  EntityNavigationHoverComponent = createMockClass("EntityNavigationHoverComponent"),
+  EntityNavigationWalkComponent = createMockClass("EntityNavigationWalkComponent"),
+  EntityOnFireComponent = createMockClass("EntityOnFireComponent"),
+  EntityProjectileComponent = createMockClass("EntityProjectileComponent"),
+  EntityPushThroughComponent = createMockClass("EntityPushThroughComponent"),
+  EntityRemoveAfterEvent = createMockClass("EntityRemoveAfterEvent"),
+  EntityRemoveAfterEventSignal = createMockClass("EntityRemoveAfterEventSignal"),
+  EntityRemoveBeforeEvent = createMockClass("EntityRemoveBeforeEvent"),
+  EntityRemoveBeforeEventSignal = createMockClass("EntityRemoveBeforeEventSignal"),
+  EntityRideableComponent = createMockClass("EntityRideableComponent"),
+  EntityRidingComponent = createMockClass("EntityRidingComponent"),
+  EntitySaturationComponent = createMockClass("EntitySaturationComponent"),
+  EntityScaleComponent = createMockClass("EntityScaleComponent"),
+  EntitySkinIdComponent = createMockClass("EntitySkinIdComponent"),
+  EntitySpawnAfterEvent = createMockClass("EntitySpawnAfterEvent"),
+  EntitySpawnAfterEventSignal = createMockClass("EntitySpawnAfterEventSignal"),
+  EntityStrengthComponent = createMockClass("EntityStrengthComponent"),
+  EntityTameableComponent = createMockClass("EntityTameableComponent"),
+  EntityTameMountComponent = createMockClass("EntityTameMountComponent"),
+  EntityTypeFamilyComponent = createMockClass("EntityTypeFamilyComponent"),
+  EntityUnderwaterMovementComponent = createMockClass("EntityUnderwaterMovementComponent"),
+  EntityVariantComponent = createMockClass("EntityVariantComponent"),
+  EntityWantsJockeyComponent = createMockClass("EntityWantsJockeyComponent"),
+  ExplorationMapFunction = createMockClass("ExplorationMapFunction"),
+  ExplosionAfterEvent = createMockClass("ExplosionAfterEvent"),
+  ExplosionAfterEventSignal = createMockClass("ExplosionAfterEventSignal"),
+  ExplosionBeforeEvent = createMockClass("ExplosionBeforeEvent"),
+  ExplosionBeforeEventSignal = createMockClass("ExplosionBeforeEventSignal"),
+  ExplosionDecayFunction = createMockClass("ExplosionDecayFunction"),
+  FeedItem = createMockClass("FeedItem"),
+  FeedItemEffect = createMockClass("FeedItemEffect"),
+  FillContainerFunction = createMockClass("FillContainerFunction"),
+  FluidContainer = createMockClass("FluidContainer"),
+  GameRuleChangeAfterEvent = createMockClass("GameRuleChangeAfterEvent"),
+  GameRuleChangeAfterEventSignal = createMockClass("GameRuleChangeAfterEventSignal"),
+  InputInfo = createMockClass("InputInfo"),
+  IsBabyCondition = createMockClass("IsBabyCondition"),
+  ItemBookComponent = createMockClass("ItemBookComponent"),
+  ItemCompleteUseAfterEvent = createMockClass("ItemCompleteUseAfterEvent"),
+  ItemCompleteUseAfterEventSignal = createMockClass("ItemCompleteUseAfterEventSignal"),
+  ItemCompleteUseEvent = createMockClass("ItemCompleteUseEvent"),
+  ItemComponent = createMockClass("ItemComponent"),
+  ItemComponentBeforeDurabilityDamageEvent = createMockClass("ItemComponentBeforeDurabilityDamageEvent"),
+  ItemComponentCompleteUseEvent = createMockClass("ItemComponentCompleteUseEvent"),
+  ItemComponentConsumeEvent = createMockClass("ItemComponentConsumeEvent"),
+  ItemComponentHitEntityEvent = createMockClass("ItemComponentHitEntityEvent"),
+  ItemComponentMineBlockEvent = createMockClass("ItemComponentMineBlockEvent"),
+  ItemComponentRegistry = createMockClass("ItemComponentRegistry"),
+  ItemComponentUseEvent = createMockClass("ItemComponentUseEvent"),
+  ItemComponentUseOnEvent = createMockClass("ItemComponentUseOnEvent"),
+  ItemCompostableComponent = createMockClass("ItemCompostableComponent"),
+  ItemCooldownComponent = createMockClass("ItemCooldownComponent"),
+  ItemCustomComponentInstance = createMockClass("ItemCustomComponentInstance"),
+  ItemDurabilityComponent = createMockClass("ItemDurabilityComponent"),
+  ItemDyeableComponent = createMockClass("ItemDyeableComponent"),
+  ItemEnchantableComponent = createMockClass("ItemEnchantableComponent"),
+  ItemFoodComponent = createMockClass("ItemFoodComponent"),
+  ItemInventoryComponent = createMockClass("ItemInventoryComponent"),
+  ItemPotionComponent = createMockClass("ItemPotionComponent"),
+  ItemReleaseUseAfterEvent = createMockClass("ItemReleaseUseAfterEvent"),
+  ItemReleaseUseAfterEventSignal = createMockClass("ItemReleaseUseAfterEventSignal"),
+  ItemStartUseAfterEvent = createMockClass("ItemStartUseAfterEvent"),
+  ItemStartUseAfterEventSignal = createMockClass("ItemStartUseAfterEventSignal"),
+  ItemStartUseOnAfterEvent = createMockClass("ItemStartUseOnAfterEvent"),
+  ItemStartUseOnAfterEventSignal = createMockClass("ItemStartUseOnAfterEventSignal"),
+  ItemStopUseAfterEvent = createMockClass("ItemStopUseAfterEvent"),
+  ItemStopUseAfterEventSignal = createMockClass("ItemStopUseAfterEventSignal"),
+  ItemStopUseOnAfterEvent = createMockClass("ItemStopUseOnAfterEvent"),
+  ItemStopUseOnAfterEventSignal = createMockClass("ItemStopUseOnAfterEventSignal"),
+  ItemUseAfterEvent = createMockClass("ItemUseAfterEvent"),
+  ItemUseAfterEventSignal = createMockClass("ItemUseAfterEventSignal"),
+  ItemUseBeforeEvent = createMockClass("ItemUseBeforeEvent"),
+  ItemUseBeforeEventSignal = createMockClass("ItemUseBeforeEventSignal"),
+  ItemUseOnEvent = createMockClass("ItemUseOnEvent"),
+  KilledByEntityCondition = createMockClass("KilledByEntityCondition"),
+  KilledByPlayerCondition = createMockClass("KilledByPlayerCondition"),
+  KilledByPlayerOrPetsCondition = createMockClass("KilledByPlayerOrPetsCondition"),
+  LeverActionAfterEvent = createMockClass("LeverActionAfterEvent"),
+  LeverActionAfterEventSignal = createMockClass("LeverActionAfterEventSignal"),
+  LinearSpline = createMockClass("LinearSpline"),
+  ListBlockVolume = createMockClass("ListBlockVolume"),
+  LootingEnchantFunction = createMockClass("LootingEnchantFunction"),
+  LootItem = createMockClass("LootItem"),
+  LootItemCondition = createMockClass("LootItemCondition"),
+  LootItemFunction = createMockClass("LootItemFunction"),
+  LootPool = createMockClass("LootPool"),
+  LootPoolEntry = createMockClass("LootPoolEntry"),
+  LootPoolTiers = createMockClass("LootPoolTiers"),
+  LootTable = createMockClass("LootTable"),
+  LootTableEntry = createMockClass("LootTableEntry"),
+  LootTableManager = createMockClass("LootTableManager"),
+  LootTableReference = createMockClass("LootTableReference"),
+  MatchToolCondition = createMockClass("MatchToolCondition"),
+  MolangVariableMap = createMockClass("MolangVariableMap"),
+  PassengerOfEntityCondition = createMockClass("PassengerOfEntityCondition"),
+  PistonActivateAfterEvent = createMockClass("PistonActivateAfterEvent"),
+  PistonActivateAfterEventSignal = createMockClass("PistonActivateAfterEventSignal"),
+  PlayerBreakBlockAfterEvent = createMockClass("PlayerBreakBlockAfterEvent"),
+  PlayerBreakBlockAfterEventSignal = createMockClass("PlayerBreakBlockAfterEventSignal"),
+  PlayerBreakBlockBeforeEvent = createMockClass("PlayerBreakBlockBeforeEvent"),
+  PlayerBreakBlockBeforeEventSignal = createMockClass("PlayerBreakBlockBeforeEventSignal"),
+  PlayerButtonInputAfterEvent = createMockClass("PlayerButtonInputAfterEvent"),
+  PlayerButtonInputAfterEventSignal = createMockClass("PlayerButtonInputAfterEventSignal"),
+  PlayerCursorInventoryComponent = createMockClass("PlayerCursorInventoryComponent"),
+  PlayerDimensionChangeAfterEvent = createMockClass("PlayerDimensionChangeAfterEvent"),
+  PlayerDimensionChangeAfterEventSignal = createMockClass("PlayerDimensionChangeAfterEventSignal"),
+  PlayerEmoteAfterEvent = createMockClass("PlayerEmoteAfterEvent"),
+  PlayerEmoteAfterEventSignal = createMockClass("PlayerEmoteAfterEventSignal"),
+  PlayerGameModeChangeAfterEvent = createMockClass("PlayerGameModeChangeAfterEvent"),
+  PlayerGameModeChangeAfterEventSignal = createMockClass("PlayerGameModeChangeAfterEventSignal"),
+  PlayerGameModeChangeBeforeEvent = createMockClass("PlayerGameModeChangeBeforeEvent"),
+  PlayerGameModeChangeBeforeEventSignal = createMockClass("PlayerGameModeChangeBeforeEventSignal"),
+  PlayerHotbarSelectedSlotChangeAfterEvent = createMockClass("PlayerHotbarSelectedSlotChangeAfterEvent"),
+  PlayerHotbarSelectedSlotChangeAfterEventSignal = createMockClass("PlayerHotbarSelectedSlotChangeAfterEventSignal"),
+  PlayerInputModeChangeAfterEvent = createMockClass("PlayerInputModeChangeAfterEvent"),
+  PlayerInputModeChangeAfterEventSignal = createMockClass("PlayerInputModeChangeAfterEventSignal"),
+  PlayerInputPermissionCategoryChangeAfterEvent = createMockClass("PlayerInputPermissionCategoryChangeAfterEvent"),
+  PlayerInputPermissionCategoryChangeAfterEventSignal = createMockClass(
+    "PlayerInputPermissionCategoryChangeAfterEventSignal",
+  ),
+  PlayerInputPermissions = createMockClass("PlayerInputPermissions"),
+  PlayerInteractWithBlockAfterEvent = createMockClass("PlayerInteractWithBlockAfterEvent"),
+  PlayerInteractWithBlockAfterEventSignal = createMockClass("PlayerInteractWithBlockAfterEventSignal"),
+  PlayerInteractWithBlockBeforeEvent = createMockClass("PlayerInteractWithBlockBeforeEvent"),
+  PlayerInteractWithBlockBeforeEventSignal = createMockClass("PlayerInteractWithBlockBeforeEventSignal"),
+  PlayerInteractWithEntityAfterEvent = createMockClass("PlayerInteractWithEntityAfterEvent"),
+  PlayerInteractWithEntityAfterEventSignal = createMockClass("PlayerInteractWithEntityAfterEventSignal"),
+  PlayerInteractWithEntityBeforeEvent = createMockClass("PlayerInteractWithEntityBeforeEvent"),
+  PlayerInteractWithEntityBeforeEventSignal = createMockClass("PlayerInteractWithEntityBeforeEventSignal"),
+  PlayerInventoryItemChangeAfterEvent = createMockClass("PlayerInventoryItemChangeAfterEvent"),
+  PlayerInventoryItemChangeAfterEventSignal = createMockClass("PlayerInventoryItemChangeAfterEventSignal"),
+  PlayerJoinAfterEvent = createMockClass("PlayerJoinAfterEvent"),
+  PlayerJoinAfterEventSignal = createMockClass("PlayerJoinAfterEventSignal"),
+  PlayerLeaveAfterEvent = createMockClass("PlayerLeaveAfterEvent"),
+  PlayerLeaveAfterEventSignal = createMockClass("PlayerLeaveAfterEventSignal"),
+  PlayerLeaveBeforeEvent = createMockClass("PlayerLeaveBeforeEvent"),
+  PlayerLeaveBeforeEventSignal = createMockClass("PlayerLeaveBeforeEventSignal"),
+  PlayerPlaceBlockAfterEvent = createMockClass("PlayerPlaceBlockAfterEvent"),
+  PlayerPlaceBlockAfterEventSignal = createMockClass("PlayerPlaceBlockAfterEventSignal"),
+  PlayerSpawnAfterEvent = createMockClass("PlayerSpawnAfterEvent"),
+  PlayerSpawnAfterEventSignal = createMockClass("PlayerSpawnAfterEventSignal"),
+  PlayerSwingStartAfterEvent = createMockClass("PlayerSwingStartAfterEvent"),
+  PlayerSwingStartAfterEventSignal = createMockClass("PlayerSwingStartAfterEventSignal"),
+  PotionDeliveryType = createMockClass("PotionDeliveryType"),
+  PotionEffectType = createMockClass("PotionEffectType"),
+  Potions = createMockClass("Potions"),
+  PressurePlatePopAfterEvent = createMockClass("PressurePlatePopAfterEvent"),
+  PressurePlatePopAfterEventSignal = createMockClass("PressurePlatePopAfterEventSignal"),
+  PressurePlatePushAfterEvent = createMockClass("PressurePlatePushAfterEvent"),
+  PressurePlatePushAfterEventSignal = createMockClass("PressurePlatePushAfterEventSignal"),
+  ProjectileHitBlockAfterEvent = createMockClass("ProjectileHitBlockAfterEvent"),
+  ProjectileHitBlockAfterEventSignal = createMockClass("ProjectileHitBlockAfterEventSignal"),
+  ProjectileHitEntityAfterEvent = createMockClass("ProjectileHitEntityAfterEvent"),
+  ProjectileHitEntityAfterEventSignal = createMockClass("ProjectileHitEntityAfterEventSignal"),
+  RandomAuxValueFunction = createMockClass("RandomAuxValueFunction"),
+  RandomBlockStateFunction = createMockClass("RandomBlockStateFunction"),
+  RandomChanceCondition = createMockClass("RandomChanceCondition"),
+  RandomChanceWithLootingCondition = createMockClass("RandomChanceWithLootingCondition"),
+  RandomDifficultyChanceCondition = createMockClass("RandomDifficultyChanceCondition"),
+  RandomDyeFunction = createMockClass("RandomDyeFunction"),
+  RandomRegionalDifficultyChanceCondition = createMockClass("RandomRegionalDifficultyChanceCondition"),
+  ScreenDisplay = createMockClass("ScreenDisplay"),
+  ScriptEventCommandMessageAfterEvent = createMockClass("ScriptEventCommandMessageAfterEvent"),
+  ScriptEventCommandMessageAfterEventSignal = createMockClass("ScriptEventCommandMessageAfterEventSignal"),
+  Seat = createMockClass("Seat"),
+  SetArmorTrimFunction = createMockClass("SetArmorTrimFunction"),
+  SetBannerDetailsFunction = createMockClass("SetBannerDetailsFunction"),
+  SetBookContentsFunction = createMockClass("SetBookContentsFunction"),
+  SetDataFromColorIndexFunction = createMockClass("SetDataFromColorIndexFunction"),
+  SetItemCountFunction = createMockClass("SetItemCountFunction"),
+  SetItemDamageFunction = createMockClass("SetItemDamageFunction"),
+  SetItemDataFunction = createMockClass("SetItemDataFunction"),
+  SetItemLoreFunction = createMockClass("SetItemLoreFunction"),
+  SetItemNameFunction = createMockClass("SetItemNameFunction"),
+  SetOminousBottleFunction = createMockClass("SetOminousBottleFunction"),
+  SetPotionFunction = createMockClass("SetPotionFunction"),
+  SetSpawnEggFunction = createMockClass("SetSpawnEggFunction"),
+  SetStewEffectFunction = createMockClass("SetStewEffectFunction"),
+  ShutdownBeforeEventSignal = createMockClass("ShutdownBeforeEventSignal"),
+  ShutdownEvent = createMockClass("ShutdownEvent"),
+  SmeltItemFunction = createMockClass("SmeltItemFunction"),
+  SpecificEnchantFunction = createMockClass("SpecificEnchantFunction"),
+  StartupBeforeEventSignal = createMockClass("StartupBeforeEventSignal"),
+  StartupEvent = createMockClass("StartupEvent"),
+  System = createMockClass("System"),
+  SystemAfterEvents = createMockClass("SystemAfterEvents"),
+  SystemBeforeEvents = createMockClass("SystemBeforeEvents"),
+  SystemInfo = createMockClass("SystemInfo"),
+  TargetBlockHitAfterEvent = createMockClass("TargetBlockHitAfterEvent"),
+  TargetBlockHitAfterEventSignal = createMockClass("TargetBlockHitAfterEventSignal"),
+  Trigger = createMockClass("Trigger"),
+  TripWireTripAfterEvent = createMockClass("TripWireTripAfterEvent"),
+  TripWireTripAfterEventSignal = createMockClass("TripWireTripAfterEventSignal"),
+  WeatherChangeAfterEvent = createMockClass("WeatherChangeAfterEvent"),
+  WeatherChangeAfterEventSignal = createMockClass("WeatherChangeAfterEventSignal"),
+  WeatherChangeBeforeEvent = createMockClass("WeatherChangeBeforeEvent"),
+  WeatherChangeBeforeEventSignal = createMockClass("WeatherChangeBeforeEventSignal"),
+  WorldLoadAfterEvent = createMockClass("WorldLoadAfterEvent"),
+  WorldLoadAfterEventSignal = createMockClass("WorldLoadAfterEventSignal"),
+  BlockCustomComponentAlreadyRegisteredError = createMockClass("BlockCustomComponentAlreadyRegisteredError", Error),
+  BlockCustomComponentReloadNewComponentError = createMockClass("BlockCustomComponentReloadNewComponentError", Error),
+  BlockCustomComponentReloadNewEventError = createMockClass("BlockCustomComponentReloadNewEventError", Error),
+  BlockCustomComponentReloadVersionError = createMockClass("BlockCustomComponentReloadVersionError", Error),
+  BookError = createMockClass("BookError", Error),
+  BookPageContentError = createMockClass("BookPageContentError", Error),
+  CommandError = createMockClass("CommandError", Error),
+  ContainerRulesError = createMockClass("ContainerRulesError", Error),
+  CustomCommandError = createMockClass("CustomCommandError", Error),
+  CustomComponentInvalidRegistryError = createMockClass("CustomComponentInvalidRegistryError", Error),
+  CustomComponentNameError = createMockClass("CustomComponentNameError", Error),
+  EnchantmentLevelOutOfBoundsError = createMockClass("EnchantmentLevelOutOfBoundsError", Error),
+  EnchantmentTypeNotCompatibleError = createMockClass("EnchantmentTypeNotCompatibleError", Error),
+  EnchantmentTypeUnknownIdError = createMockClass("EnchantmentTypeUnknownIdError", Error),
+  EntitySpawnError = createMockClass("EntitySpawnError", Error),
+  InvalidBlockComponentError = createMockClass("InvalidBlockComponentError", Error),
+  InvalidContainerError = createMockClass("InvalidContainerError", Error),
+  InvalidContainerSlotError = createMockClass("InvalidContainerSlotError", Error),
+  InvalidItemStackError = createMockClass("InvalidItemStackError", Error),
+  InvalidIteratorError = createMockClass("InvalidIteratorError", Error),
+  InvalidPotionDeliveryTypeError = createMockClass("InvalidPotionDeliveryTypeError", Error),
+  InvalidPotionEffectTypeError = createMockClass("InvalidPotionEffectTypeError", Error),
+  InvalidStructureError = createMockClass("InvalidStructureError", Error),
+  ItemCustomComponentAlreadyRegisteredError = createMockClass("ItemCustomComponentAlreadyRegisteredError", Error),
+  ItemCustomComponentReloadNewComponentError = createMockClass("ItemCustomComponentReloadNewComponentError", Error),
+  ItemCustomComponentReloadNewEventError = createMockClass("ItemCustomComponentReloadNewEventError", Error),
+  ItemCustomComponentReloadVersionError = createMockClass("ItemCustomComponentReloadVersionError", Error),
+  LocationInUnloadedChunkError = createMockClass("LocationInUnloadedChunkError", Error),
+  LocationOutOfWorldBoundariesError = createMockClass("LocationOutOfWorldBoundariesError", Error),
+  NamespaceNameError = createMockClass("NamespaceNameError", Error),
+  PlaceJigsawError = createMockClass("PlaceJigsawError", Error),
+  RawMessageError = createMockClass("RawMessageError", Error),
+  TickingAreaError = createMockClass("TickingAreaError", Error),
+  UnloadedChunksError = createMockClass("UnloadedChunksError", Error);
+
+export const HudElementsCount = 13;
+export const HudVisibilityCount = 2;
+export const MoonPhaseCount = 8;
+export const TicksPerDay = 24000;
+export const TicksPerSecond = 20;
